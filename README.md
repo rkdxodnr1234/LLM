@@ -1,3 +1,3 @@
 # Make LLM
 
-testing Ollama
+Testing Ollama
