@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>농업 LLM 챗봇</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      height: 100vh;
+      background-color: #f7f7f8;
+    }
+    .sidebar {
+      width: 300px;
+      background-color: #ffffff;
+      border-right: 1px solid #ddd;
+      padding: 20px;
+    }
+    .sidebar h2 {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+    .sidebar input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #aaa;
+      border-radius: 5px;
+    }
+    .main {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-window {
+      flex-grow: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .chat-bubble {
+      max-width: 70%;
+      padding: 12px 18px;
+      margin: 10px 0;
+      border-radius: 16px;
+      font-size: 16px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .user {
+      background-color: #d1e9ff;
+      align-self: flex-end;
+    }
+    .bot {
+      background-color: #e8e8e8;
+      align-self: flex-start;
+    }
+    .input-area {
+      display: flex;
+      padding: 10px 20px;
+      border-top: 1px solid #ccc;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #aaa;
+      font-size: 16px;
+    }
+    .input-area button {
+      margin-left: 10px;
+      padding: 12px 20px;
+      background-color: #3f81f7;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .input-area button:hover {
+      background-color: #296de2;
+    }
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 15px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h2>📄 문서 업로드</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="file" id="fileInput" accept="application/pdf" required>
+    </form>
+  </div>
+
+  <div class="main">
+    <div class="chat-window" id="chatWindow">
+      <!-- 메시지가 여기에 추가됨 -->
+    </div>
+
+    <div id="loading">🔄 답변 생성 중...</div>
+
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="질문을 입력하세요...">
+      <button id="sendBtn">전송</button>
+    </div>
+  </div>
+
+  <script>
+    const sendBtn = document.getElementById('sendBtn');
+    const userInput = document.getElementById('userInput');
+    const chatWindow = document.getElementById('chatWindow');
+    const loading = document.getElementById('loading');
+
+    function appendMessage(text, className) {
+      const div = document.createElement('div');
+      div.className = `chat-bubble ${className}`;
+      div.textContent = text;
+      chatWindow.appendChild(div);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    sendBtn.addEventListener('click', async () => {
+      const question = userInput.value.trim();
+      const file = document.getElementById('fileInput').files[0];
+      if (!question || !file) {
+        alert("PDF 파일과 질문을 모두 입력해주세요.");
+        return;
+      }
+
+      appendMessage(question, 'user');
+      userInput.value = '';
+      loading.style.display = 'block';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('question', question);
+
+      const response = await fetch('/ask_llm', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      appendMessage(result.answer, 'bot');
+      loading.style.display = 'none';
+    });
+  </script>
+
+</body>
+</html>
