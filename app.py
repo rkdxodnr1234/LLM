@@ -1,56 +1,45 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-
 from flask import Flask, render_template, request, jsonify
 from PyPDF2 import PdfReader
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
-from langchain_community.llms import HuggingFacePipeline
-from transformers import pipeline
-import os
+from langchain_community.llms import Ollama  # Ollama 연결 핵심!
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 🔹 임베딩 모델 준비
+# 1. 임베딩 모델 준비
 embedding_model = HuggingFaceEmbeddings(model_name="intfloat/e5-base-v2")
-
-# 🔹 텍스트 쪼개기
 text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 
-# 🔹 공개 LLM: Mistral (접근 제한 없음)
-llm_pipeline = pipeline("text-generation", model="mistralai/Mistral-7B-v0.1", max_new_tokens=512)
-llm = HuggingFacePipeline(pipeline=llm_pipeline)
+# 2. Ollama로 로컬 모델 연결
+llm = Ollama(model="gemma")  # 또는 mistral, llama2 가능
 
 @app.route('/')
 def index():
-    return render_template("llm_index.html")
+    return render_template("chat.html")  # UI 파일명
 
 @app.route('/ask_llm', methods=['POST'])
 def ask_llm():
     file = request.files['file']
     question = request.form['question']
 
-    # PDF 저장 및 읽기
-    pdf_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(pdf_path)
-    reader = PdfReader(pdf_path)
-    text = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+    path = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(path)
 
-    # 텍스트 → Chunk → 임베딩 → Vector DB
+    reader = PdfReader(path)
+    text = "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
+
     docs = text_splitter.create_documents([text])
     db = FAISS.from_documents(docs, embedding_model)
-
-    # RAG QA 체인 구성
     retriever = db.as_retriever()
-    qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-    # 질문 처리
-    answer = qa_chain.run(question)
+    qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+    answer = qa.run(question)
     return jsonify({'answer': answer})
 
 if __name__ == '__main__':
