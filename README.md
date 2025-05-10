@@ -25,3 +25,15 @@ pip install -r requirements.txt
 # ollama llama3와 gemma3:12b를 사용
 ollama run llama3
 ollama run gemma3:12b
+
+
+# faster-whisper 설치
+pip install faster-whisper
+
+# edge_tts 설치
+
+# jdk 설치
+# 환경변수 추가
+# jpype 설치
+conda install -c conda-forge jpype1
+# konlpy 설치
